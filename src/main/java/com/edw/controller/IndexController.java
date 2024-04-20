@@ -1,6 +1,12 @@
 package com.edw.controller;
 
+import org.keycloak.OAuth2Constants;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UsersResource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,8 +34,42 @@ import java.util.logging.Logger;
 public class IndexController {
     private Logger logger = Logger.getLogger(IndexController.class.getName());
 
+    @Value("${serverUrl}")
+    private String serverUrl;
+
+    @Value("${realm}")
+    private String realm;
+
+    @Value("${clientId}")
+    private String clientId;
+
+    @Value("${clientSecret}")
+    private String clientSecret;
+
+    @Value("${adminUser}")
+    private String adminUser;
+
+    @Value("${adminPassword}")
+    private String adminPassword;
+
     @Autowired
     private KeyClock keyClock;
+
+    public void talkWithKeyClockAdmin() {
+        Keycloak keycloak = KeycloakBuilder.builder() //
+          .serverUrl(serverUrl) //
+          .realm(realm) //
+          .grantType(OAuth2Constants.PASSWORD) //
+          .clientId(clientId) //
+          .clientSecret(clientSecret) //
+          .username(adminUser) //
+          .password(adminPassword) //
+          .build();
+
+        RealmResource realmResource = keycloak.realm(realm);
+        UsersResource usersRessource = realmResource.users();
+        System.out.println("users count: " + usersRessource.count());
+    }
 
     @Bean
     @RequestScope
@@ -61,15 +101,12 @@ public class IndexController {
         OAuth2AuthenticationToken oauth2Auth = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         String idToken = ((DefaultOidcUser) oauth2Auth.getPrincipal()).getIdToken().getTokenValue();
 
-//        OAuth2AuthorizedClient client =
-//          clientService.loadAuthorizedClient(
-//            oauth2Auth.getAuthorizedClientRegistrationId(),
-//            oauth2Auth.getName());
-//        String accessToken = client.getAccessToken().getTokenValue();
         logger.info("getAuthorizedClientRegistrationId: " + oauth2Auth.getAuthorizedClientRegistrationId());
         for (Workout workout : keyClock.getWorkout())
              logger.info("workout: " + workout);
 
+
+        talkWithKeyClockAdmin();
         return new HashMap(){{
             put("hello", user.getAttribute("name"));
             put("your email is", user.getAttribute("email"));
